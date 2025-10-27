@@ -1,22 +1,14 @@
-<!doctype html> 
+<!doctype html>
 <html lang="fr">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Mon projet</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0f172a" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>Belgique vs France - Scoreboard</title>
   </head>
   <body>
-    <h1>Hello Pages 👋</h1>
-    <p>Version: <span id="version">v0.1</span></p>
-
-    <script>
-      // Exemple SW – garde ces chemins RELATIFS si tu utilises un service worker.
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(() => {});
-        });
-      }
-    </script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
