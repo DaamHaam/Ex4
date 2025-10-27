@@ -1,0 +1,114 @@
+name: Pages (prod, beta, PR previews)
+
+on:
+  push:
+    branches: [ main, Next ]
+  pull_request:
+    # Préviews pour PR vers main ET vers Next
+    branches: [ main, Next ]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write        # push sur gh-pages
+  pull-requests: write   # commenter l'URL de preview
+
+concurrency:
+  group: pages-${{ github.workflow }}-${{ github.ref || format('pr-{0}', github.event.number) }}
+  cancel-in-progress: true
+
+jobs:
+  # --- PROD: push sur main -> racine de gh-pages ---
+  deploy-prod:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Si le site nécessite un build (Vite/React/etc.), décommente:
+      # - uses: actions/setup-node@v4
+      #   with: { node-version: '20' }
+      # - run: npm ci && npm run build
+      # ...et plus bas remplace publish_dir: . par ./dist (ou ./build)
+
+      - name: Deploy production to gh-pages root
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: .
+          keep_files: true        # NE PAS effacer /beta ni /pr-*
+
+  # --- BÊTA: push sur Next -> gh-pages/beta ---
+  deploy-beta:
+    if: github.ref == 'refs/heads/Next'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # (build éventuel ici aussi)
+
+      - name: Deploy beta to gh-pages/beta
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: .
+          destination_dir: beta
+          keep_files: true
+
+  # --- PR PREVIEW vers Next: gh-pages/beta/pr-<num>/ ---
+  pr-preview-next:
+    if: github.event_name == 'pull_request' && github.base_ref == 'Next'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      # (build si besoin)
+
+      - name: Deploy PR preview (Next)
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: .
+          destination_dir: beta/pr-${{ github.event.number }}
+          keep_files: true
+
+      - name: Compute repo vars
+        run: echo "REPO_NAME=${GITHUB_REPOSITORY#*/}" >> $GITHUB_ENV
+      - name: Comment preview URL (Next)
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          recreate: true
+          message: |
+            🚀 Préversion déployée :
+            https://${{ github.repository_owner }}.github.io/${{ env.REPO_NAME }}/beta/pr-${{ github.event.number }}/
+
+  # --- PR PREVIEW vers main: gh-pages/pr-<num>/ ---
+  pr-preview-main:
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      # (build si besoin)
+
+      - name: Deploy PR preview (main)
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: .
+          destination_dir: pr-${{ github.event.number }}
+          keep_files: true
+
+      - name: Compute repo vars
+        run: echo "REPO_NAME=${GITHUB_REPOSITORY#*/}" >> $GITHUB_ENV
+      - name: Comment preview URL (main)
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          recreate: true
+          message: |
+            🚀 Préversion déployée :
+            https://${{ github.repository_owner }}.github.io/${{ env.REPO_NAME }}/pr-${{ github.event.number }}/
